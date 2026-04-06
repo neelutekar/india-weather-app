@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>India Weather</title>
+    <link rel="stylesheet" href="/static/lib/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            background: #0d1117;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── HEADER ── */
+        header {
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            flex-shrink: 0;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .logo i { color: #60a5fa; font-size: 1.3rem; }
+
+        .search-form {
+            display: flex;
+            gap: 8px;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 9px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        input[type="text"]:focus { border-color: rgba(96,165,250,0.5); }
+        input[type="text"]::placeholder { color: rgba(255,255,255,0.3); }
+
+        button {
+            padding: 9px 20px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: #fff;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+        }
+
+        button:hover { opacity: 0.85; }
+
+        .hint {
+            color: rgba(255,255,255,0.25);
+            font-size: 0.78rem;
+            margin-left: auto;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .hint i { color: #60a5fa; }
+
+        /* ── LAYOUT ── */
+        .main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #map {
+            flex: 1;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            width: 320px;
+            flex-shrink: 0;
+            background: linear-gradient(180deg, #0d1117 0%, #111827 100%);
+            border-left: 1px solid rgba(255,255,255,0.07);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 28px 24px;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        /* ── PLACEHOLDER ── */
+        .placeholder {
+            text-align: center;
+            color: rgba(255,255,255,0.2);
+        }
+
+        .placeholder .big-icon {
+            font-size: 3rem;
+            color: rgba(96,165,250,0.3);
+            margin-bottom: 16px;
+        }
+
+        .placeholder p {
+            font-size: 0.85rem;
+            line-height: 1.7;
+        }
+
+        /* ── LOADING ── */
+        .loading {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255,255,255,0.4);
+            font-size: 0.85rem;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(96,165,250,0.2);
+            border-top-color: #60a5fa;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── ERROR ── */
+        .error-msg {
+            display: none;
+            background: rgba(239,68,68,0.1);
+            border: 1px solid rgba(239,68,68,0.3);
+            border-radius: 12px;
+            padding: 14px 16px;
+            color: #fca5a5;
+            font-size: 0.85rem;
+            text-align: center;
+            width: 100%;
+            line-height: 1.5;
+        }
+
+        .error-msg i { display: block; font-size: 1.5rem; margin-bottom: 8px; color: #ef4444; }
+
+        /* ── WEATHER CARD ── */
+        .weather-card {
+            display: none;
+            width: 100%;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card-top {
+            background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.1));
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 18px;
+            padding: 24px 20px;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .city-name {
+            color: #fff;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .coords {
+            color: rgba(255,255,255,0.35);
+            font-size: 0.75rem;
+            margin-top: 3px;
+            margin-bottom: 16px;
+        }
+
+        .weather-icon-wrap {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+
+        .weather-icon {
+            width: 90px;
+            height: 90px;
+            filter: drop-shadow(0 0 20px rgba(96,165,250,0.4));
+        }
+
+        .temp-main {
+            font-size: 4rem;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1;
+            letter-spacing: -2px;
+        }
+
+        .temp-main sup {
+            font-size: 1.5rem;
+            font-weight: 400;
+            letter-spacing: 0;
+            vertical-align: super;
+        }
+
+        .description {
+            color: rgba(255,255,255,0.55);
+            font-size: 0.9rem;
+            margin-top: 6px;
+            text-transform: capitalize;
+        }
+
+        /* ── DETAIL GRID ── */
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .detail-box {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 14px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .detail-box i {
+            font-size: 1.2rem;
+            width: 28px;
+            text-align: center;
+        }
+
+        .detail-box .label {
+            color: rgba(255,255,255,0.35);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .detail-box .value {
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .icon-feels  { color: #f97316; }
+        .icon-humid  { color: #38bdf8; }
+        .icon-wind   { color: #a78bfa; }
+        .icon-vis    { color: #34d399; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">
+        <i class="fa-solid fa-cloud-sun"></i>
+        India Weather
+    </div>
+    <form class="search-form" method="POST">
+        <input type="text" name="city" placeholder="Search any city in India..."
+               value="{{ request.form.get('city', '') }}">
+        <button type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+    </form>
+    <div class="hint">
+        <i class="fa-solid fa-location-crosshairs"></i>
+        Click on map for weather
+    </div>
+</header>
+
+<div class="main">
+    <div id="map"></div>
+
+    <div class="sidebar">
+
+        <div class="placeholder" id="placeholder">
+            <div class="big-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+            <p>Click anywhere on the map<br>or search a city above<br>to see live weather</p>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            Fetching weather...
+        </div>
+
+        <div class="error-msg" id="error-msg">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span id="error-text"></span>
+        </div>
+
+        <div class="weather-card" id="weather-card">
+            <div class="card-top">
+                <div class="city-name" id="w-city"></div>
+                <div class="coords" id="w-coords"></div>
+                <div class="weather-icon-wrap">
+                    <img class="weather-icon" id="w-icon" src="" alt="">
+                </div>
+                <div class="temp-main" id="w-temp"></div>
+                <div class="description" id="w-desc"></div>
+            </div>
+
+            <div class="details-grid">
+                <div class="detail-box">
+                    <i class="fa-solid fa-temperature-half icon-feels"></i>
+                    <div>
+                        <div class="label">Feels Like</div>
+                        <div class="value" id="w-feels"></div>
+                    </div>
+                </div>
+                <div class="detail-box">
+                    <i class="fa-solid fa-droplet icon-humid"></i>
+                    <div>
+                        <div class="label">Humidity</div>
+                        <div class="value" id="w-humidity"></div>
+                    </div>
+                </div>
+                <div class="detail-box">
+                    <i class="fa-solid fa-wind icon-wind"></i>
+                    <div>
+                        <div class="label">Wind</div>
+                        <div class="value" id="w-wind"></div>
+                    </div>
+                </div>
+                <div class="detail-box">
+                    <i class="fa-solid fa-eye icon-vis"></i>
+                    <div>
+                        <div class="label">Visibility</div>
+                        <div class="value" id="w-vis"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="/static/lib/leaflet.js"></script>
+<script>
+    const map = L.map('map', {
+        center: [20.5937, 78.9629],
+        zoom: 5,
+        minZoom: 4
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let marker = null;
+
+    function showLoading() {
+        document.getElementById('placeholder').style.display = 'none';
+        document.getElementById('weather-card').style.display = 'none';
+        document.getElementById('error-msg').style.display = 'none';
+        document.getElementById('loading').style.display = 'flex';
+    }
+
+    function showError(msg) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error-msg').style.display = 'block';
+        document.getElementById('error-text').textContent = msg;
+    }
+
+    function showWeather(data, lat, lon) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error-msg').style.display = 'none';
+        document.getElementById('weather-card').style.display = 'block';
+
+        document.getElementById('w-city').textContent = data.city;
+
+        if (lat !== null && lon !== null) {
+            document.getElementById('w-coords').textContent =
+                parseFloat(lat).toFixed(2) + '\u00b0N, ' + parseFloat(lon).toFixed(2) + '\u00b0E';
+        } else {
+            document.getElementById('w-coords').textContent = '';
+        }
+
+        document.getElementById('w-icon').src = 'https://openweathermap.org/img/wn/' + data.icon + '@2x.png';
+        document.getElementById('w-icon').alt = data.description;
+        document.getElementById('w-temp').innerHTML = Math.round(data.temp) + '<sup>&deg;C</sup>';
+        document.getElementById('w-desc').textContent = data.description;
+        document.getElementById('w-feels').textContent = Math.round(data.feels_like) + '\u00b0C';
+        document.getElementById('w-humidity').textContent = data.humidity + '%';
+        document.getElementById('w-wind').textContent = data.wind + ' m/s';
+        document.getElementById('w-vis').textContent = data.visibility !== undefined
+            ? (data.visibility / 1000).toFixed(1) + ' km' : 'N/A';
+    }
+
+    function fetchWeatherByCoords(lat, lon) {
+        showLoading();
+        if (marker) map.removeLayer(marker);
+        marker = L.marker([lat, lon]).addTo(map);
+
+        fetch('/weather-by-coords?lat=' + lat + '&lon=' + lon)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    showWeather(data, lat, lon);
+                    marker.bindPopup(
+                        '<b>' + data.city + '</b><br>' + Math.round(data.temp) + '&deg;C &mdash; ' + data.description
+                    ).openPopup();
+                }
+            })
+            .catch(function() { showError('Failed to fetch weather. Check your connection.'); });
+    }
+
+    map.on('click', function(e) {
+        fetchWeatherByCoords(e.latlng.lat, e.latlng.lng);
+    });
+
+    var serverWeather = JSON.parse(document.getElementById('server-weather').textContent);
+    var serverError   = JSON.parse(document.getElementById('server-error').textContent);
+
+    if (serverWeather) {
+        document.getElementById('placeholder').style.display = 'none';
+        showWeather(serverWeather, null, null);
+    }
+
+    if (serverError) {
+        document.getElementById('placeholder').style.display = 'none';
+        showError(serverError);
+    }
+</script>
+
+<script type="application/json" id="server-weather">{{ weather | tojson }}</script>
+<script type="application/json" id="server-error">{{ error | tojson }}</script>
+</body>
+</html>
