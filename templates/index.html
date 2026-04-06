@@ -369,6 +369,8 @@
     </div>
 </div>
 
+<script type="application/json" id="server-weather">{{ weather | tojson }}</script>
+<script type="application/json" id="server-error">{{ error | tojson }}</script>
 <script src="/static/lib/leaflet.js"></script>
 <script>
     const map = L.map('map', {
@@ -459,7 +461,5 @@
     }
 </script>
 
-<script type="application/json" id="server-weather">{{ weather | tojson }}</script>
-<script type="application/json" id="server-error">{{ error | tojson }}</script>
 </body>
 </html>
