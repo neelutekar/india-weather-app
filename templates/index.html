@@ -339,6 +339,63 @@
         .icon-humid  { color: #38bdf8; }
         .icon-wind   { color: #a78bfa; }
         .icon-vis    { color: #34d399; }
+        .forecast-section {
+            width: 100%;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .forecast-section.visible { display: block; }
+
+        .forecast-title {
+            color: rgba(255,255,255,0.35);
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+            padding-left: 2px;
+        }
+
+        .forecast-row {
+            display: flex;
+            align-items: center;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-bottom: 6px;
+            gap: 10px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .forecast-day {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.78rem;
+            font-weight: 500;
+            width: 80px;
+            flex-shrink: 0;
+        }
+
+        .forecast-icon {
+            width: 36px;
+            height: 36px;
+            flex-shrink: 0;
+        }
+
+        .forecast-desc {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.72rem;
+            flex: 1;
+            text-transform: capitalize;
+        }
+
+        .forecast-temps {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .forecast-temps .hi { color: #fff; font-size: 0.88rem; font-weight: 600; }
+        .forecast-temps .lo { color: rgba(255,255,255,0.35); font-size: 0.75rem; }
 
         /* ── OVERLAY LABEL ── */
         .overlay-label {
@@ -447,6 +504,10 @@
                     <i class="fa-solid fa-eye icon-vis"></i>
                     <div><div class="label">Visibility</div><div class="value" id="w-vis"></div></div>
                 </div>
+            </div>
+            <div class="forecast-section" id="forecast-section">
+                <div class="forecast-title">5-Day Forecast</div>
+                <div id="forecast-rows"></div>
             </div>
         </div>
 
@@ -585,6 +646,7 @@
         document.getElementById('weather-card').style.display = 'none';
         document.getElementById('error-msg').style.display = 'none';
         document.getElementById('loading').style.display = 'flex';
+        document.getElementById('forecast-section').classList.remove('visible');
     }
 
     function showError(msg) {
@@ -623,6 +685,28 @@
 
     var marker = null;
 
+    function fetchForecast(params) {
+        fetch('/forecast-by-coords?' + params)
+            .then(function(r) { return r.json(); })
+            .then(function(days) {
+                if (!days || days.error || days.length === 0) return;
+                var html = '';
+                days.forEach(function(d) {
+                    html += '<div class="forecast-row">' +
+                        '<div class="forecast-day">' + d.day + '</div>' +
+                        '<img class="forecast-icon" src="https://openweathermap.org/img/wn/' + d.icon + '@2x.png" alt="">' +
+                        '<div class="forecast-desc">' + d.description + '</div>' +
+                        '<div class="forecast-temps">' +
+                            '<div class="hi">' + d.temp_max + '&deg;C</div>' +
+                            '<div class="lo">' + d.temp_min + '&deg;C</div>' +
+                        '</div>' +
+                    '</div>';
+                });
+                document.getElementById('forecast-rows').innerHTML = html;
+                document.getElementById('forecast-section').classList.add('visible');
+            });
+    }
+
     function fetchWeatherByCoords(lat, lon) {
         showLoading();
         if (marker) map.removeLayer(marker);
@@ -635,6 +719,7 @@
                     showError(data.error);
                 } else {
                     showWeather(data, lat, lon);
+                    fetchForecast('lat=' + lat + '&lon=' + lon);
                     marker.bindPopup(
                         '<b>' + data.city + '</b><br>' +
                         Math.round(data.temp) + '&deg;C &mdash; ' + data.description
@@ -657,6 +742,7 @@
     if (serverWeather) {
         document.getElementById('placeholder').style.display = 'none';
         showWeather(serverWeather, null, null);
+        fetchForecast('city=' + encodeURIComponent(serverWeather.city));
     }
 
     if (serverError) {
