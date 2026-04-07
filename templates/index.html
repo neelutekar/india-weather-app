@@ -468,7 +468,7 @@
         minZoom: 4
     });
 
-    var baseLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+    var baseLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CartoDB',
         subdomains: 'abcd',
         maxZoom: 19
@@ -522,7 +522,7 @@
 
         // Switch to dark base map for better overlay visibility
         map.removeLayer(baseLayer);
-        baseLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+        baseLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap &copy; CartoDB',
             subdomains: 'abcd',
             maxZoom: 19
